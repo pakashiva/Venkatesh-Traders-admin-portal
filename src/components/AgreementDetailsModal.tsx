@@ -1,5 +1,5 @@
 import { FileText, X } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type SubmitEvent } from 'react';
 import { listChequePresets } from '../services/agreementService';
 import type { AgreementBranch, AgreementInputs, ChequeFieldPresets } from '../types/admin';
 
@@ -125,7 +125,7 @@ export function AgreementDetailsModal({
     return null;
   }
 
-  function submit(event: FormEvent) {
+  function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!chequeNo.trim()) {
       setLocalError('Enter the cheque number.');

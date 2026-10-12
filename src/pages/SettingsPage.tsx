@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
 import { ErrorBanner } from '../components/States';
@@ -77,7 +77,7 @@ export function SettingsPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function onSave(event: FormEvent) {
+  async function onSave(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
       await portal.save({

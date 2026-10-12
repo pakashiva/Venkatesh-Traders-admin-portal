@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type SubmitEvent } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
 import {
   createInvestmentRequest,
@@ -189,7 +189,7 @@ export function AddInvestmentModal({ open, onClose, onCreated }: Props) {
     });
   }
 
-  async function onSubmit(event: FormEvent) {
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     const nextErrors: Partial<Record<keyof FormState, string>> = {};

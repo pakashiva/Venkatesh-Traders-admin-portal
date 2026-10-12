@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { Calendar, X } from 'lucide-react';
 import { createCustomer, type CreateCustomerInput } from '../services/customerService';
 
@@ -238,7 +238,7 @@ export function CreateCustomerModal({ open, onClose, onCreated }: Props) {
     });
   }
 
-  async function onSubmit(event: FormEvent) {
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitError(null);
     const nextErrors = validateForm(form);

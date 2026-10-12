@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import { X } from 'lucide-react';
 import {
   getApprovedInvestmentEdit,
@@ -144,7 +144,7 @@ export function EditApprovedInvestmentModal({
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
-  async function onSubmit(event: FormEvent) {
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form || !investmentId) return;
 
