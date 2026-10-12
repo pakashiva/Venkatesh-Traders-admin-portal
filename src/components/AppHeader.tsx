@@ -10,6 +10,9 @@ type AppHeaderProps = {
   title: string;
   subtitle?: string;
   showSearch?: boolean;
+  searchValue?: string;
+  searchPlaceholder?: string;
+  onSearchChange?: (value: string) => void;
   actions?: ReactNode;
   onOpenMenu: () => void;
 };
@@ -18,6 +21,9 @@ export function AppHeader({
   title,
   subtitle,
   showSearch = false,
+  searchValue = '',
+  searchPlaceholder = 'Search operations...',
+  onSearchChange,
   actions,
   onOpenMenu,
 }: AppHeaderProps) {
@@ -41,7 +47,12 @@ export function AppHeader({
               <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
               <path d="M20 20L17 17" stroke="currentColor" strokeWidth="2" />
             </svg>
-            <input name="q" placeholder="Search operations..." />
+            <input
+              value={searchValue}
+              onChange={(event) => onSearchChange?.(event.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+            />
           </form>
         ) : null}
         {actions}

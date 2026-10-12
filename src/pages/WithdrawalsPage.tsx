@@ -85,6 +85,9 @@ export function WithdrawalsPage() {
         title="Withdrawal Requests"
         subtitle="Authorise and process customer withdrawal requests."
         showSearch
+        searchValue={withdrawals.searchInput}
+        searchPlaceholder="Search customer, investment ID, bank..."
+        onSearchChange={withdrawals.setSearchInput}
         onOpenMenu={onOpenMenu}
       />
 
@@ -118,8 +121,16 @@ export function WithdrawalsPage() {
           <div className="state-box">Loading withdrawals…</div>
         ) : rows.length === 0 ? (
           <EmptyState
-            title="No withdrawal requests"
-            message="No matching payout requests for this filter."
+            title={
+              withdrawals.searchInput.trim()
+                ? 'No matching withdrawal requests'
+                : 'No withdrawal requests'
+            }
+            message={
+              withdrawals.searchInput.trim()
+                ? `No withdrawal requests match “${withdrawals.searchInput.trim()}”. Try another search.`
+                : 'No matching payout requests for this filter.'
+            }
           />
         ) : (
           <div style={{ overflowX: 'auto' }}>

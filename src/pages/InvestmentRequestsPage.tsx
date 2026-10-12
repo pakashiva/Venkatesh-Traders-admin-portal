@@ -139,6 +139,9 @@ export function InvestmentRequestsPage() {
         title="Investment Requests"
         subtitle="Process and sign off client capital deployments."
         showSearch
+        searchValue={requests.searchInput}
+        searchPlaceholder="Search customer, request ID, plan..."
+        onSearchChange={requests.setSearchInput}
         onOpenMenu={onOpenMenu}
         actions={
           <button type="button" className="primary-btn" onClick={() => setCreateOpen(true)}>
@@ -172,8 +175,16 @@ export function InvestmentRequestsPage() {
           <div className="state-box">Loading requests…</div>
         ) : rows.length === 0 ? (
           <EmptyState
-            title="No investment requests"
-            message="No matching fund requests for this filter."
+            title={
+              requests.searchInput.trim()
+                ? 'No matching investment requests'
+                : 'No investment requests'
+            }
+            message={
+              requests.searchInput.trim()
+                ? `No investment requests match “${requests.searchInput.trim()}”. Try another search.`
+                : 'No matching fund requests for this filter.'
+            }
           />
         ) : (
           <div style={{ overflowX: 'auto' }}>
