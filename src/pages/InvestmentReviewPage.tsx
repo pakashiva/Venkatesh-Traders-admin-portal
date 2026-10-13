@@ -41,7 +41,7 @@ function isPayoutDay(value: number | null | undefined): value is PayoutDay {
   return value != null && (PAYOUT_DAYS as readonly number[]).includes(value);
 }
 
-/** Soonest cycle day on or after this calendar day. After the 25th, the 1st. */
+/** Automatically select the next payout cycle on or after the investment date. */
 function nextCycleDay(dayOfMonth: number): PayoutDay {
   return PAYOUT_DAYS.find((day) => day >= dayOfMonth) ?? 1;
 }
@@ -55,15 +55,12 @@ function kolkataTodayIso(date = new Date()): string {
   }).format(date);
 }
 
-/** Cycle is the next payout day on or after the invested date. After the 25th, the 1st. */
 function cycleDayForInvestedDate(investedIso: string | null): PayoutDay {
-  const iso = investedIso && /^\d{4}-\d{2}-\d{2}/.test(investedIso) ? investedIso.slice(0, 10) : kolkataTodayIso();
-  const day = Number(iso.slice(8, 10));
-  return nextCycleDay(Number.isFinite(day) ? day : kolkataDayOfMonth());
-}
-
-function kolkataDayOfMonth(date = new Date()): number {
-  return Number(kolkataTodayIso(date).slice(8, 10));
+  const iso =
+    investedIso && /^\d{4}-\d{2}-\d{2}/.test(investedIso)
+      ? investedIso.slice(0, 10)
+      : kolkataTodayIso();
+  return nextCycleDay(Number(iso.slice(8, 10)));
 }
 
 function nextPayDateIso(investedIso: string | null, cycleDay: number): string {
@@ -122,17 +119,14 @@ export function InvestmentReviewPage() {
 
   const editable = detail?.status === 'Pending' || detail?.status === 'Under Review';
   const storedPayoutDay = isPayoutDay(detail?.payout_day) ? detail.payout_day : null;
-  // Pay date always follows the invested date. The old column default of the 10th
-  // is not a selection, even if it was stored on insert.
   const investedIso = detail?.invested_date ?? null;
   const automaticPayoutDay = cycleDayForInvestedDate(investedIso);
-  const adminChoseDay =
-    Boolean(detail?.payout_day_overridden) &&
-    storedPayoutDay != null &&
-    storedPayoutDay !== automaticPayoutDay &&
-    storedPayoutDay !== 10;
-  const payoutDay = adminChoseDay ? storedPayoutDay : automaticPayoutDay;
-  const payDateIso = nextPayDateIso(investedIso, payoutDay ?? automaticPayoutDay);
+  const payoutDay = editable
+    ? detail?.payout_day_overridden && storedPayoutDay != null
+      ? storedPayoutDay
+      : automaticPayoutDay
+    : storedPayoutDay;
+  const payDateIso = payoutDay == null ? null : nextPayDateIso(investedIso, payoutDay);
   const referralRate = detail?.referral_rate ?? 0.01;
   const hasReferrer = Boolean(detail?.referrer_user_id || detail?.referrer_name);
 
@@ -472,7 +466,7 @@ export function InvestmentReviewPage() {
                     className={payoutDay === day ? 'active' : ''}
                     disabled={!editable || saving}
                     onClick={() => {
-                      if (day === payoutDay) return;
+                      if (day === payoutDay && detail.payout_day_overridden) return;
                       void persistTerms(detail.interest_rate, detail.tds_percent, referralRate, day);
                     }}
                   >
@@ -481,8 +475,8 @@ export function InvestmentReviewPage() {
                 ))}
               </div>
               <p className="muted" style={{ marginTop: 8 }}>
-                Next pay date {formatDate(payDateIso)}, from invested date{' '}
-                {formatDate(investedIso || kolkataTodayIso())}.
+                Automatically selected from the investment date; choose another day to override.
+                {payDateIso ? ` Next pay date ${formatDate(payDateIso)}.` : ''}
               </p>
             </div>
 
