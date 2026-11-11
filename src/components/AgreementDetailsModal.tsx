@@ -20,6 +20,7 @@ type Props = {
   open: boolean;
   title: string;
   confirmLabel: string;
+  initialValues?: AgreementInputs | null;
   busy?: boolean;
   error?: string | null;
   onClose: () => void;
@@ -84,6 +85,7 @@ export function AgreementDetailsModal({
   open,
   title,
   confirmLabel,
+  initialValues = null,
   busy = false,
   error: externalError = null,
   onClose,
@@ -104,17 +106,21 @@ export function AgreementDetailsModal({
     listChequePresets()
       .then((rows) => {
         setPresets(rows);
-        setChequeNo(rows.cheque_nos[0] ?? '');
-        setBankName(rows.bank_names[0] ?? '');
-        setBankAddress(rows.bank_addresses[0] ?? '');
+        setBranch(initialValues?.branch ?? 'ballari');
+        setChequeNo(initialValues?.chequeNo ?? rows.cheque_nos[0] ?? '');
+        setBankName(initialValues?.chequeBankName ?? rows.bank_names[0] ?? '');
+        setBankAddress(
+          initialValues?.chequeBankAddress ?? rows.bank_addresses[0] ?? ''
+        );
       })
       .catch(() => {
         setPresets(EMPTY_PRESETS);
-        setChequeNo('');
-        setBankName('');
-        setBankAddress('');
+        setBranch(initialValues?.branch ?? 'ballari');
+        setChequeNo(initialValues?.chequeNo ?? '');
+        setBankName(initialValues?.chequeBankName ?? '');
+        setBankAddress(initialValues?.chequeBankAddress ?? '');
       });
-  }, [open]);
+  }, [open, initialValues]);
 
   const selectedNotice = useMemo(
     () => BRANCHES.find((item) => item.id === branch)?.notice ?? '',

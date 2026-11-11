@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 import { AddInvestmentModal } from '../components/AddInvestmentModal';
 import { AgreementDetailsModal } from '../components/AgreementDetailsModal';
@@ -44,10 +45,17 @@ export function InvestmentRequestsPage() {
   const [menuId, setMenuId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [regenerateId, setRegenerateId] = useState<string | null>(null);
+  const [agreementInitialValues, setAgreementInitialValues] =
+    useState<AgreementInputs | null>(null);
   const [agreementBusy, setAgreementBusy] = useState(false);
   const [agreementError, setAgreementError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuDropdownRef = useRef<HTMLDivElement | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const requests = useInvestmentRequests();
 
   const rows = requests.result?.rows ?? [];
@@ -58,20 +66,58 @@ export function InvestmentRequestsPage() {
   useEffect(() => {
     if (!menuId) return;
     function onDocClick(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !menuRef.current?.contains(target) &&
+        !menuDropdownRef.current?.contains(target)
+      ) {
         setMenuId(null);
       }
     }
     function onKey(event: KeyboardEvent) {
       if (event.key === 'Escape') setMenuId(null);
     }
+    function onViewportChange() {
+      setMenuId(null);
+    }
     document.addEventListener('mousedown', onDocClick);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('resize', onViewportChange);
     return () => {
       document.removeEventListener('mousedown', onDocClick);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onViewportChange, true);
+      window.removeEventListener('resize', onViewportChange);
     };
   }, [menuId]);
+
+  function openRowMenu(
+    rowId: string,
+    anchor: HTMLButtonElement,
+    itemCount: number
+  ) {
+    if (menuId === rowId) {
+      setMenuId(null);
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = 220;
+    const estimatedHeight = itemCount * 42 + 14;
+    const below = window.innerHeight - rect.bottom;
+    const top =
+      below >= estimatedHeight || rect.top < estimatedHeight
+        ? Math.min(rect.bottom + 4, window.innerHeight - estimatedHeight - 8)
+        : rect.top - estimatedHeight - 4;
+    const left = Math.max(
+      8,
+      Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8)
+    );
+
+    setMenuPosition({ top: Math.max(8, top), left });
+    setMenuId(rowId);
+  }
 
   async function onCancelInvestment(row: InvestmentRequestListRow) {
     setMenuId(null);
@@ -98,11 +144,16 @@ export function InvestmentRequestsPage() {
     setActionBusy(true);
     try {
       const existing = await getInvestmentAgreement(row.id);
-      if (existing) {
-        await downloadAgreementDocx(existing);
-        setNotice(`Agreement regenerated for ${row.code || row.customer_name}.`);
-        return;
-      }
+      setAgreementInitialValues(
+        existing
+          ? {
+              branch: existing.agreement.branch,
+              chequeNo: existing.agreement.cheque_no,
+              chequeBankName: existing.agreement.cheque_bank_name,
+              chequeBankAddress: existing.agreement.cheque_bank_address,
+            }
+          : null
+      );
       setRegenerateId(row.id);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : 'Could not regenerate agreement');
@@ -113,6 +164,7 @@ export function InvestmentRequestsPage() {
 
   async function onAgreementConfirm(inputs: AgreementInputs) {
     if (!regenerateId) return;
+    const editingExistingAgreement = agreementInitialValues !== null;
     setAgreementBusy(true);
     setAgreementError(null);
     try {
@@ -125,7 +177,12 @@ export function InvestmentRequestsPage() {
       });
       await downloadAgreementDocx(payload);
       setRegenerateId(null);
-      setNotice('Agreement generated and downloaded.');
+      setAgreementInitialValues(null);
+      setNotice(
+        editingExistingAgreement
+          ? 'Agreement updated and downloaded.'
+          : 'Agreement generated and downloaded.'
+      );
     } catch (err) {
       setAgreementError(err instanceof Error ? err.message : 'Could not generate agreement');
     } finally {
@@ -268,55 +325,70 @@ export function InvestmentRequestsPage() {
                               aria-label="More actions"
                               aria-expanded={menuId === row.id}
                               disabled={actionBusy}
-                              onClick={() =>
-                                setMenuId((prev) => (prev === row.id ? null : row.id))
+                              onClick={(event) =>
+                                openRowMenu(
+                                  row.id,
+                                  event.currentTarget,
+                                  showApprovedMenu ? 4 : 2
+                                )
                               }
                             >
                               <MoreVertical size={18} />
                             </button>
-                            {menuId === row.id ? (
-                              <div className="row-menu-dropdown" role="menu">
-                                {showApprovedMenu ? (
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      setMenuId(null);
-                                      setEditId(row.id);
+                            {menuId === row.id && menuPosition && typeof document !== 'undefined'
+                              ? createPortal(
+                                  <div
+                                    ref={menuDropdownRef}
+                                    className="row-menu-dropdown"
+                                    role="menu"
+                                    style={{
+                                      top: menuPosition.top,
+                                      left: menuPosition.left,
                                     }}
                                   >
-                                    Edit
-                                  </button>
-                                ) : null}
-                                {showApprovedMenu ? (
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    className="danger"
-                                    onClick={() => void onCancelInvestment(row)}
-                                  >
-                                    Withdraw / Cancel
-                                  </button>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() => void onRegenerate(row)}
-                                >
-                                  Regenerate
-                                </button>
-                                <button
-                                  type="button"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setMenuId(null);
-                                    navigate(`/investment-requests/${row.id}`);
-                                  }}
-                                >
-                                  View
-                                </button>
-                              </div>
-                            ) : null}
+                                    {showApprovedMenu ? (
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setMenuId(null);
+                                          setEditId(row.id);
+                                        }}
+                                      >
+                                        Edit
+                                      </button>
+                                    ) : null}
+                                    {showApprovedMenu ? (
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        className="danger"
+                                        onClick={() => void onCancelInvestment(row)}
+                                      >
+                                        Withdraw / Cancel
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => void onRegenerate(row)}
+                                    >
+                                      Edit / Regenerate Agreement
+                                    </button>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => {
+                                        setMenuId(null);
+                                        navigate(`/investment-requests/${row.id}`);
+                                      }}
+                                    >
+                                      View
+                                    </button>
+                                  </div>,
+                                  document.body
+                                )
+                              : null}
                           </div>
                         ) : (
                           <button
@@ -376,13 +448,15 @@ export function InvestmentRequestsPage() {
 
       <AgreementDetailsModal
         open={regenerateId !== null}
-        title="Generate Loan Agreement"
-        confirmLabel="Download Agreement"
+        title={agreementInitialValues ? 'Edit Loan Agreement' : 'Generate Loan Agreement'}
+        confirmLabel={agreementInitialValues ? 'Save & Download' : 'Generate & Download'}
+        initialValues={agreementInitialValues}
         busy={agreementBusy}
         error={agreementError}
         onClose={() => {
           if (!agreementBusy) {
             setRegenerateId(null);
+            setAgreementInitialValues(null);
             setAgreementError(null);
           }
         }}
